@@ -129,7 +129,7 @@ func newList(id string) *TudouList {
 
 // download album list
 func (tl *TudouList) downList(start, end int) {
-    if start < 0 {
+    if start < 0 || start - 1 > len(tl.Items) {
         start = 1
     }
 
