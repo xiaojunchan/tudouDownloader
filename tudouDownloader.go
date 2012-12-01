@@ -15,7 +15,7 @@ import (
 
 const (
     TUDOU_LIST  = "http://www.tudou.com/tva/srv/alist.action?ver=asins&a=" // return json
-    TUDOU_VIDEO = "http://v2.tudou.com/v.action?retc=1&vn=02&hd=2&sid=10200&st=1&it=" // return xml
+    TUDOU_VIDEO = "http://v2.tudou.com/v.action?vn=02&hd=2&it=" // return xml
 )
 
 var (
@@ -71,7 +71,7 @@ func getDownUrl(id string) string {
 }
 
 // download file
-func download(u, fn string) {
+func download(u, fn string) bool {
     fn = strings.TrimSpace(fn)
 
     // create folder
@@ -84,15 +84,18 @@ func download(u, fn string) {
 
     resp, err := http.Get(u)
     if err != nil {
-        panic(err)
+        // panic(err)
+        fmt.Println("Download Failed!")
+        return false
     }
+    defer resp.Body.Close()
 
     fn += ".f4v"
 
     fmt.Println("Downloading..., filename:", fn)
 
     // create file
-    file, err := os.OpenFile("output/" + fn, os.O_RDWR | os.O_APPEND | os.O_CREATE, 0664)
+    file, err := os.OpenFile("output/" + fn, os.O_RDWR | os.O_CREATE, 0664)
     if err != nil {
         panic(err)
     }
@@ -101,9 +104,11 @@ func download(u, fn string) {
     // downloading
     if _, err := io.Copy(file, resp.Body); err != nil {
         fmt.Println("Download Failed!")
+        return false
     }
 
     fmt.Println("Download Success!")
+    return true
 }
 
 // new album list
@@ -134,7 +139,11 @@ func (tl *TudouList) downList(start, end int) {
 
     for start <= end {
         downUrl := getDownUrl(strconv.Itoa(tl.Items[start - 1].Iid))
-        download(downUrl, tl.Items[start - 1].Kw)
+        if !download(downUrl, tl.Items[start - 1].Kw) {
+            fmt.Println("Try again, id:", strconv.Itoa(tl.Items[start - 1].Iid))
+            downUrl := getDownUrl(strconv.Itoa(tl.Items[start - 1].Iid))
+            download(downUrl, tl.Items[start - 1].Kw)
+        }
         start++
     }
 }
@@ -184,6 +193,10 @@ func main() {
         downList.downList(*start, *end)
     case "single":
         downUrl := getDownUrl(id)
-        download(downUrl, id)
+        if !download(downUrl, id) {
+            fmt.Println("Try again, id:", id)
+            downUrl := getDownUrl(id)
+            download(downUrl, id)
+        }
     }
 }
